@@ -3,14 +3,20 @@ from pydantic import BaseModel
 from model import FraudDetector
 import uvicorn
 import os
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="PDS AI Fraud Detection Service")
 detector = FraudDetector()
 
-# Load model on startup
-@app.on_event("startup")
-async def startup_event():
+# Lifespan context manager for startup/shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Load model
     detector.load()
+    yield
+    # Shutdown: Cleanup if needed
+
+# Create app with lifespan
+app = FastAPI(title="PDS AI Fraud Detection Service", lifespan=lifespan)
 
 class TransactionRequest(BaseModel):
     beneficiary_id: str
@@ -34,7 +40,7 @@ def read_root():
 @app.post("/predict-fraud", response_model=FraudResponse)
 def predict_fraud(transaction: TransactionRequest):
     try:
-        data = transaction.dict()
+        data = transaction.model_dump()
         score, risk, reasons = detector.predict(data)
         
         return {
@@ -50,9 +56,9 @@ def predict_fraud(transaction: TransactionRequest):
 def batch_analyze(transactions: list[TransactionRequest]):
     results = []
     for tx in transactions:
-        data = tx.dict()
-        score, risk = detector.predict(data)
-        results.append({"fraud_score": score, "risk_level": risk})
+        data = tx.model_dump()
+        score, risk, reasons = detector.predict(data)
+        results.append({"fraud_score": score, "risk_level": risk, "reasons": reasons})
     return {"results": results}
 
 @app.get("/model-health")

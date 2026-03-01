@@ -286,7 +286,7 @@ const EventForm = () => {
             >
               <option value="PDS_DISTRIBUTION">PDS Distribution</option>
               <option value="certificate">Digital Certificate</option>
-              <option value="document">Legal Document</option>
+              <option value="document"> Document</option>
               <option value="other">Other Event</option>
             </select>
           </div>
